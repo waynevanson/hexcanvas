@@ -20,3 +20,23 @@ export function createNonNullable<T extends Record<string, unknown>>(
 		return result as never;
 	});
 }
+
+export function createCells<T>(
+	size: { x: number; y: number },
+	createCell: (indicies: { x: number; y: number }) => T,
+): Array<Array<T>> {
+	return Array.from({ length: size.y }, (_, y) =>
+		Array.from({ length: size.x }, (_, x) => createCell({ x, y })),
+	);
+}
+
+// todo: seed
+export function createRandomHexCode() {
+	const ss = "012345789ABCDEF";
+	return ss[Math.floor(Math.random() * ss.length)] ?? "5";
+}
+
+export type SolidEvent<E extends Event, T extends HTMLElement> = E & {
+	currentTarget: T;
+	target: T;
+};

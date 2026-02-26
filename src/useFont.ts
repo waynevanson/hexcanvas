@@ -7,8 +7,5 @@ export function useFont(fontFamily: string, endpoint: string) {
 		return await fontFace.load();
 	});
 
-	return createMemo(() => ({
-		family: fontFamily,
-		ready: fonts.state === "ready",
-	}));
+	return createMemo(() => (fonts.state === "ready" ? fontFamily : null));
 }

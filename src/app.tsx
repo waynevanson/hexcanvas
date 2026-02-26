@@ -1,238 +1,127 @@
-import { ReactiveMap } from "@solid-primitives/map";
-import { createElementSize } from "@solid-primitives/resize-observer";
-import equals from "fast-deep-equal";
-import { createMemo, createSignal } from "solid-js";
+import {
+	createElementSize,
+	type Size,
+} from "@solid-primitives/resize-observer";
+import { createMemo, createSignal, on } from "solid-js";
 import { createStore } from "solid-js/store";
+import { Canvas } from "./canvas";
+import { Controls } from "./controls";
+import { createChar } from "./createChar";
 import { createEffectRaf } from "./createEffectRaf";
+import { createNodes } from "./createNodes";
 import { useFont } from "./useFont";
-import { createNonNullable } from "./utils";
 
-const FONT_ENDPOINT = "/public/webfonts/JetBrainsMono-Regular.woff2";
-
-const rand = () => {
-	const ss = "012345789ABCDEF";
-	return ss[Math.floor(Math.random() * ss.length)] ?? "5";
-};
+export interface AppStore {
+	fontSize: number;
+	gap: number;
+}
 
 export function App() {
-	const [store, storeSet] = createStore({ fontSize: 100, gap: 2 });
-
-	const [containerRef, containerRefSet] = createSignal<
+	const [refContainer, refContainerSet] = createSignal<
 		HTMLDivElement | undefined
 	>(undefined);
 
-	const [canvasRef, canvasRefSet] = createSignal<HTMLCanvasElement | undefined>(
+	const [refCanvas, refCanvasSet] = createSignal<HTMLCanvasElement | undefined>(
 		undefined,
 	);
 
-	const sized = createElementSize(containerRef);
-	// memoization doesn't work here?
-	const size = () =>
-		sized.height === null || sized.height === null ? null : sized;
+	const sizeNullable = createElementSize(refContainer);
+	const size = (): Size | null =>
+		sizeNullable.height === null || sizeNullable.width === null
+			? null
+			: sizeNullable;
 
-	const merged = createNonNullable({
-		context: createMemo(() => canvasRef()?.getContext("2d")),
-		font: useFont("JetBrains Mono", FONT_ENDPOINT),
-		size,
-	});
+	const context = createMemo(() => refCanvas()?.getContext("2d") ?? null);
 
-	const char_ = createMemo(() => {
-		const value = merged();
-
-		if (value == null || !value.font.ready) {
-			return null;
-		}
-
-		const char = {
-			x: {
-				size: store.fontSize * 0.43,
-				get box() {
-					return char.x.size + store.gap / 2;
-				},
-				offset: -store.fontSize * 0.08,
-				count: {
-					get float() {
-						return (value.size.width + store.gap) / (char.x.size + store.gap);
-					},
-					get floor() {
-						return Math.floor(this.float);
-					},
-				},
-				get margin() {
-					return ((this.count.float - this.count.floor) * this.size) / 2;
-				},
-			},
-			y: {
-				size: store.fontSize * 0.74,
-				get box() {
-					return char.y.size + store.gap / 2;
-				},
-				offset: -store.fontSize * 0.01,
-				count: {
-					get float() {
-						return (value.size.height + store.gap) / (char.y.size + store.gap);
-					},
-					get floor() {
-						return Math.floor(this.float);
-					},
-				},
-				get margin() {
-					return ((this.count.float - this.count.floor) * this.size) / 2;
-				},
-			},
-		};
-
-		return char;
-	});
-
-	const nodes = createMemo(
-		() => {
-			const char = char_();
-
-			if (char == null) {
-				return [];
-			}
-
-			const nodes: Array<Array<{ x: number; y: number }>> = Array.from(
-				{ length: char.y.count.floor },
-				(_, y) =>
-					Array.from({ length: char.x.count.floor }, (_, x) => ({
-						x: x * (char.x.size + store.gap) + char.x.offset,
-						y: y * (char.y.size + store.gap) + char.y.offset + char.y.size,
-					})),
-			);
-
-			return nodes;
-		},
-		null,
-		{ equals },
+	const fontFamily = useFont(
+		"JetBrains Mono",
+		"/webfonts/JetBrainsMono-Regular.woff2",
 	);
 
-	// x, y. use a normal object for serialization
-	const highlighted = new ReactiveMap<number, Set<number>>();
+	const [store, storeSet] = createStore<AppStore>({ fontSize: 100, gap: 2 });
 
-	createEffectRaf(() => {
-		const value = merged();
+	const char = createChar(store, size);
 
-		nodes().forEach((rows, y) => {
-			rows.forEach((_, x) => {
-				highlighted.get(y)?.has(x);
-			});
-		});
+	const nodes = createNodes(store, char);
 
-		if (value == null || !value.font.ready) {
-			return;
-		}
+	createEffectRaf(
+		on(
+			[context, nodes.value, fontFamily, () => store.fontSize, char, size],
+			([context, nodes, fontFamily, fontSize, char]) => {
+				if (context === null || fontFamily === null || char === null) {
+					return;
+				}
 
-		value.context.reset();
+				context.reset();
 
-		value.context.font = `${store.fontSize}px ${value.font.family}`;
+				context.font = `${fontSize}px ${fontFamily}`;
 
-		nodes().forEach((rows, y) => {
-			rows.forEach((node, x) => {
-				value.context.fillStyle = highlighted.get(y)?.has(x)
-					? "green"
-					: "lightgreen";
-				value.context.fillText(rand(), node.x, node.y);
-			});
-		});
-	});
+				nodes.slice(0, char.y.count.floor).forEach((cells) => {
+					cells.slice(0, char.x.count.floor).forEach((cell) => {
+						context.fillStyle = cell.selected ? "green" : "lightgreen";
+						context.fillText(cell.letter, cell.x, cell.y);
+					});
+				});
+			},
+		),
+	);
+
+	// function handleOnClick(
+	// 	event: MouseEvent & {
+	// 		currentTarget: HTMLCanvasElement;
+	// 		target: Element;
+	// 	},
+	// ) {
+	// 	const w = char.x.count.floor * char.x.box;
+	// 	const h = char.y.count.floor * char.y.box;
+
+	// 	// out of bounds
+	// 	if (event.x > w || event.y > h) {
+	// 		return;
+	// 	}
+
+	// 	// percentage from in bounds area
+	// 	const percW = event.x / w;
+	// 	const percH = event.y / h;
+
+	// 	// percentage of array
+	// 	const percw = percW * char.x.count.floor;
+	// 	const perch = percH * char.y.count.floor;
+
+	// 	const iW = Math.floor(percw);
+	// 	const iH = Math.floor(perch);
+
+	// 	const node = nodes.value().at(iH)?.at(iW);
+
+	// 	if (!node) {
+	// 		throw new Error("Should find a node bro");
+	// 	}
+
+	// 	const ir = new Set(highlighted.get(iH));
+	// 	ir.add(iW);
+
+	// 	highlighted.set(iH, ir);
+
+	// 	// find target node based on mouse x,y
+	// 	// get percentage of width,height
+	// }
 
 	return (
 		<div>
-			<div
-				ref={containerRefSet}
-				style={{ "aspect-ratio": `${260 / 460}`, overflow: "hidden" }}
-			>
-				<canvas
-					ref={canvasRefSet}
-					height={sized.height ?? 0}
-					width={sized.width ?? 0}
-					onClick={(event) => {
-						const sized = size();
-
-						if (sized == null) {
-							return;
-						}
-
-						const char = char_();
-
-						if (char == null) {
-							return;
-						}
-
-						const w = char.x.count.floor * char.x.box;
-						const h = char.y.count.floor * char.y.box;
-
-						// out of bounds
-						if (event.x > w || event.y > h) {
-							return;
-						}
-
-						// percentage from in bounds area
-						const percW = event.x / w;
-						const percH = event.y / h;
-
-						// percentage of array
-						const percw = percW * char.x.count.floor;
-						const perch = percH * char.y.count.floor;
-
-						const iW = Math.floor(percw);
-						const iH = Math.floor(perch);
-
-						const node = nodes().at(iH)?.at(iW);
-
-						if (!node) {
-							throw new Error("Should find a node bro");
-						}
-
-						const ir = new Set(highlighted.get(iH));
-						ir.add(iW);
-
-						highlighted.set(iH, ir);
-
-						// find target node based on mouse x,y
-						// get percentage of width,height
-					}}
-				/>
-			</div>
-			<div>
-				<button
-					type="button"
-					onClick={() => {
-						highlighted.clear();
-					}}
-				>
-					Clear
-				</button>
-				<div>
-					<label>
-						<span>Font size</span>
-						<input
-							type="range"
-							min={1}
-							max={300}
-							value={store.fontSize}
-							onInput={(event) =>
-								storeSet("fontSize", event.target.valueAsNumber)
-							}
-						/>
-					</label>
-				</div>
-
-				<div>
-					<label>
-						<span>Gap</span>
-						<input
-							type="range"
-							min={-30}
-							max={30}
-							value={store.gap}
-							onInput={(event) => storeSet("gap", event.target.valueAsNumber)}
-						/>
-					</label>
-				</div>
-			</div>
+			<Canvas
+				refCanvas={refCanvasSet}
+				refContainer={refContainerSet}
+				size={sizeNullable}
+			/>
+			<Controls
+				fontSize={store.fontSize}
+				gap={store.gap}
+				onInputFontSize={(event) =>
+					storeSet("fontSize", event.target.valueAsNumber)
+				}
+				onInputGap={(event) => storeSet("gap", event.target.valueAsNumber)}
+				onClickClear={() => {}}
+			/>
 		</div>
 	);
 }
