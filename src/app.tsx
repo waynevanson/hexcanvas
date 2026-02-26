@@ -44,6 +44,7 @@ export function App() {
 
 	const nodes = createNodes(store, char);
 
+	// todo: make it pretty
 	createEffectRaf(
 		on(
 			[
@@ -74,23 +75,17 @@ export function App() {
 		),
 	);
 
+	// todo: fix the math on this, something isn't right
+	// looks like it's using the whole canvas hieght,
+	// or the offset is off
 	function handleOnClick(
 		event: MouseEvent & {
 			currentTarget: HTMLCanvasElement;
 			target: Element;
 		},
 	) {
-		const char_ = char();
-
-		if (char_ === null) {
-			return;
-		}
-
-		const xfloor = char_.x.count.floor;
-		const yfloor = char_.y.count.floor;
-
-		const w = xfloor * char_.x.box;
-		const h = yfloor * char_.y.box;
+		const w = char.xCountFloor() * char.xBox();
+		const h = char.yCountFloor() * char.yBox();
 
 		// out of bounds
 		if (event.x > w || event.y > h) {
@@ -102,8 +97,8 @@ export function App() {
 		const percH = event.y / h;
 
 		// percentage of array
-		const percw = percW * xfloor;
-		const perch = percH * yfloor;
+		const percw = percW * char.xCountFloor();
+		const perch = percH * char.yCountFloor();
 		const colIndex = Math.floor(percw);
 		const rowIndex = Math.floor(perch);
 
@@ -114,9 +109,6 @@ export function App() {
 		}
 
 		nodes.setSelectNode({ colIndex, rowIndex }, true);
-
-		// find target node based on mouse x,y
-		// get percentage of width,height
 	}
 
 	return (
@@ -134,7 +126,7 @@ export function App() {
 					storeSet("fontSize", event.target.valueAsNumber)
 				}
 				onInputGap={(event) => storeSet("gap", event.target.valueAsNumber)}
-				onClickClear={() => {}}
+				onClickClear={nodes.clearAllNodes}
 			/>
 		</div>
 	);

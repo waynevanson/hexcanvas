@@ -18,7 +18,11 @@ export function Canvas(props: CanvasProps) {
 	return (
 		<div
 			ref={scope.refContainer}
-			style={{ "aspect-ratio": `${260 / 460}`, overflow: "hidden" }}
+			style={{
+				"aspect-ratio": `${260 / 460}`,
+				overflow: "hidden",
+				"max-width": "40rem",
+			}}
 		>
 			<canvas
 				{...rest}
