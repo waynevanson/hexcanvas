@@ -1,6 +1,5 @@
-import { type Accessor, createEffect, createSignal, on } from "solid-js";
+import { createEffect, createSignal } from "solid-js";
 import type { AppStore } from "./app";
-import type { Chars } from "./createChar";
 import { createCells, createRandomHexCode } from "./utils";
 
 export interface CellNode {
@@ -154,14 +153,13 @@ function update(
 	const colsCurr = nodes_.at(0)?.length ?? 0;
 	const rowsCurr = nodes_.length;
 
+	const nodes = resize(nodes_, options);
+
 	const options_ = {
 		...options,
 		rowsCurr,
 		colsCurr,
 	};
-
-	// resize existing nodes
-	const nodes = resize(nodes_, options);
 
 	if (options.colsTarget > colsCurr) {
 		extendColumns(nodes, options_);
@@ -175,30 +173,34 @@ function update(
 }
 
 // todo: update node positions when range changes
-export function createNodes(store: AppStore, char: Accessor<Chars | null>) {
+export function createNodes(
+	store: AppStore,
+	accessors: {
+		xCountFloor: () => number;
+		xOffset: () => number;
+		xSize: () => number;
+		yCountFloor: () => number;
+		ySize: () => number;
+		yOffset: () => number;
+	},
+) {
 	const [nodes, nodesSet] = createSignal<Array<Array<CellNode>>>([]);
 
 	// Update only when the store gets bigger in terms of number of items.
 	// It's gross but it's getting the job done efficiently.
-	createEffect(
-		on([char, () => store.gap], ([char, gap]) => {
-			if (char === null) {
-				return;
-			}
+	createEffect(() => {
+		const options = {
+			gap: store.gap,
+			colsTarget: accessors.xCountFloor(),
+			rowsTarget: accessors.yCountFloor(),
+			xOffset: accessors.xOffset(),
+			yOffset: accessors.yOffset(),
+			xSize: accessors.xSize(),
+			ySize: accessors.ySize(),
+		};
 
-			const options = {
-				gap,
-				colsTarget: char.x.count.floor,
-				rowsTarget: char.y.count.floor,
-				xOffset: char.x.offset,
-				yOffset: char.y.offset,
-				xSize: char.x.size,
-				ySize: char.y.size,
-			};
-
-			nodesSet((nodes) => update(nodes, options));
-		}),
-	);
+		nodesSet((nodes) => update(nodes, options));
+	});
 
 	// yuckies
 	function setSelectNode(

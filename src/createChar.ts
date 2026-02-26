@@ -1,77 +1,35 @@
-import type { Size } from "@solid-primitives/resize-observer";
-import equals from "fast-deep-equal";
-import { type Accessor, createMemo, on } from "solid-js";
+import type { NullableSize } from "@solid-primitives/resize-observer";
+import { createMemo } from "solid-js";
 import type { AppStore } from "./app";
 
-export interface Chars {
-	x: {
-		size: number;
-		readonly box: number;
-		offset: number;
-		count: {
-			readonly float: number;
-			readonly floor: number;
-		};
-	};
-	y: {
-		size: number;
-		readonly box: number;
-		offset: number;
-		count: {
-			readonly float: number;
-			readonly floor: number;
-		};
-	};
-}
-
-// At least I'm having fun, ya know?
-export function createChar(
-	store: AppStore,
-	size: Accessor<Size | null>,
-): Accessor<Chars | null> {
-	return createMemo(
-		on(
-			[size, () => store.fontSize, () => store.gap],
-			([size, fontSize, gap]) => {
-				if (size === null) {
-					return null;
-				}
-
-				const char = {
-					x: {
-						size: fontSize * 0.43,
-						get box() {
-							return char.x.size + gap / 2;
-						},
-						offset: -fontSize * 0.08,
-						count: {
-							get float() {
-								return (size.width + gap) / (char.x.size + gap);
-							},
-							get floor() {
-								return Math.floor(this.float);
-							},
-						},
-					},
-					y: {
-						size: fontSize * 0.74,
-						get box() {
-							return char.y.size + gap / 2;
-						},
-						offset: -fontSize * 0.01,
-						count: {
-							get float() {
-								return (size.height + gap) / (char.y.size + gap);
-							},
-							get floor() {
-								return Math.floor(this.float);
-							},
-						},
-					},
-				};
-
-				return char;
-			},
+// todo: is not using null for size derivations safe?
+export function createChar(store: AppStore, size: NullableSize) {
+	const _ = undefined,
+		xSize = createMemo(() => store.fontSize * 0.43),
+		xBox = createMemo(() => xSize() + store.gap / 2),
+		xOffset = createMemo(() => -store.fontSize * 0.08),
+		xCountFloat = createMemo(
+			() => (size.width ?? 0 + store.gap) / (xSize() + store.gap),
 		),
-	);
+		xCountFloor = createMemo(() => Math.floor(xCountFloat())),
+		ySize = createMemo(() => store.fontSize * 0.74),
+		yBox = createMemo(() => ySize() + store.gap / 2),
+		yOffset = createMemo(() => -store.fontSize * 0.01),
+		yCountFloat = createMemo(
+			() => (size.height ?? 0 + store.gap) / (ySize() + store.gap),
+		),
+		yCountFloor = createMemo(() => Math.floor(yCountFloat()));
+
+	return {
+		xSize,
+		xBox,
+		xOffset,
+		xCountFloat,
+		xCountFloor,
+		ySize,
+		yBox,
+		yOffset,
+		yCountFloat,
+		yCountFloor,
+	};
 }

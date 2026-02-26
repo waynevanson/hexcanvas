@@ -40,15 +40,22 @@ export function App() {
 
 	const [store, storeSet] = createStore<AppStore>({ fontSize: 100, gap: 2 });
 
-	const char = createChar(store, size);
+	const char = createChar(store, sizeNullable);
 
 	const nodes = createNodes(store, char);
 
 	createEffectRaf(
 		on(
-			// size is required for updates on change
-			[context, nodes.value, fontFamily, () => store.fontSize, char, size],
-			([context, nodes, fontFamily, fontSize, char]) => {
+			[
+				context,
+				nodes.value,
+				fontFamily,
+				() => store.fontSize,
+				char.xCountFloor,
+				char.yCountFloor,
+				size,
+			],
+			([context, nodes, fontFamily, fontSize, xCountFloor, yCountFloor]) => {
 				if (context === null || fontFamily === null || char === null) {
 					return;
 				}
@@ -57,8 +64,8 @@ export function App() {
 
 				context.font = `${fontSize}px ${fontFamily}`;
 
-				nodes.slice(0, char.y.count.floor).forEach((cells) => {
-					cells.slice(0, char.x.count.floor).forEach((cell) => {
+				nodes.slice(0, yCountFloor).forEach((cells) => {
+					cells.slice(0, xCountFloor).forEach((cell) => {
 						context.fillStyle = cell.selected ? "green" : "lightgreen";
 						context.fillText(cell.letter, cell.x, cell.y);
 					});
