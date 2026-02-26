@@ -14,7 +14,7 @@ export function createChar(store: AppStore, size: NullableSize) {
 		xCountFloor = createMemo(() => Math.floor(xCountFloat())),
 		ySize = createMemo(() => store.fontSize * 0.74),
 		yBox = createMemo(() => ySize() + store.gap / 2),
-		yOffset = createMemo(() => -store.fontSize * 0.01),
+		yOffset = createMemo(() => -store.fontSize * 0.01 + ySize()),
 		yCountFloat = createMemo(
 			() => (size.height ?? 0 + store.gap) / (ySize() + store.gap),
 		),

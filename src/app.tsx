@@ -2,6 +2,7 @@ import {
 	createElementSize,
 	type Size,
 } from "@solid-primitives/resize-observer";
+import { makePersisted } from "@solid-primitives/storage";
 import { createMemo, createSignal, on } from "solid-js";
 import { createStore } from "solid-js/store";
 import { Canvas } from "./canvas";
@@ -38,7 +39,10 @@ export function App() {
 		"/webfonts/JetBrainsMono-Regular.woff2",
 	);
 
-	const [store, storeSet] = createStore<AppStore>({ fontSize: 100, gap: 2 });
+	const [store, storeSet] = makePersisted(
+		createStore<AppStore>({ fontSize: 100, gap: 2 }),
+		{ name: "nodesstore", storage: localStorage },
+	);
 
 	const char = createChar(store, sizeNullable);
 
