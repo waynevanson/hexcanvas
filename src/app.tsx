@@ -14,8 +14,6 @@ const rand = () => {
 	return ss[Math.floor(Math.random() * ss.length)] ?? "5";
 };
 
-const gap = 2;
-
 export function App() {
 	const [store, storeSet] = createStore({ fontSize: 100, gap: 2 });
 
@@ -49,12 +47,12 @@ export function App() {
 			x: {
 				size: store.fontSize * 0.43,
 				get box() {
-					return char.x.size + gap / 2;
+					return char.x.size + store.gap / 2;
 				},
 				offset: -store.fontSize * 0.08,
 				count: {
 					get float() {
-						return (value.size.width + gap) / (char.x.size + gap);
+						return (value.size.width + store.gap) / (char.x.size + store.gap);
 					},
 					get floor() {
 						return Math.floor(this.float);
@@ -67,12 +65,12 @@ export function App() {
 			y: {
 				size: store.fontSize * 0.74,
 				get box() {
-					return char.y.size + gap / 2;
+					return char.y.size + store.gap / 2;
 				},
 				offset: -store.fontSize * 0.01,
 				count: {
 					get float() {
-						return (value.size.height + gap) / (char.y.size + gap);
+						return (value.size.height + store.gap) / (char.y.size + store.gap);
 					},
 					get floor() {
 						return Math.floor(this.float);
@@ -99,8 +97,8 @@ export function App() {
 				{ length: char.y.count.floor },
 				(_, y) =>
 					Array.from({ length: char.x.count.floor }, (_, x) => ({
-						x: x * (char.x.size + gap) + char.x.offset,
-						y: y * (char.y.size + gap) + char.y.offset + char.y.size,
+						x: x * (char.x.size + store.gap) + char.x.offset,
+						y: y * (char.y.size + store.gap) + char.y.offset + char.y.size,
 					})),
 			);
 
@@ -218,6 +216,19 @@ export function App() {
 							onInput={(event) =>
 								storeSet("fontSize", event.target.valueAsNumber)
 							}
+						/>
+					</label>
+				</div>
+
+				<div>
+					<label>
+						<span>Gap</span>
+						<input
+							type="range"
+							min={-30}
+							max={30}
+							value={store.gap}
+							onInput={(event) => storeSet("gap", event.target.valueAsNumber)}
 						/>
 					</label>
 				</div>
