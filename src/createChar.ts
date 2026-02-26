@@ -1,7 +1,7 @@
 import type { Size } from "@solid-primitives/resize-observer";
+import equals from "fast-deep-equal";
 import { type Accessor, createMemo, on } from "solid-js";
 import type { AppStore } from "./app";
-import type { Contexts } from "./canvas";
 
 export interface Chars {
 	x: {
@@ -30,45 +30,48 @@ export function createChar(
 	size: Accessor<Size | null>,
 ): Accessor<Chars | null> {
 	return createMemo(
-		on(size, (size) => {
-			if (size === null) {
-				return null;
-			}
+		on(
+			[size, () => store.fontSize, () => store.gap],
+			([size, fontSize, gap]) => {
+				if (size === null) {
+					return null;
+				}
 
-			const char = {
-				x: {
-					size: store.fontSize * 0.43,
-					get box() {
-						return char.x.size + store.gap / 2;
-					},
-					offset: -store.fontSize * 0.08,
-					count: {
-						get float() {
-							return (size.width + store.gap) / (char.x.size + store.gap);
+				const char = {
+					x: {
+						size: fontSize * 0.43,
+						get box() {
+							return char.x.size + gap / 2;
 						},
-						get floor() {
-							return Math.floor(this.float);
-						},
-					},
-				},
-				y: {
-					size: store.fontSize * 0.74,
-					get box() {
-						return char.y.size + store.gap / 2;
-					},
-					offset: -store.fontSize * 0.01,
-					count: {
-						get float() {
-							return (size.height + store.gap) / (char.y.size + store.gap);
-						},
-						get floor() {
-							return Math.floor(this.float);
+						offset: -fontSize * 0.08,
+						count: {
+							get float() {
+								return (size.width + gap) / (char.x.size + gap);
+							},
+							get floor() {
+								return Math.floor(this.float);
+							},
 						},
 					},
-				},
-			};
+					y: {
+						size: fontSize * 0.74,
+						get box() {
+							return char.y.size + gap / 2;
+						},
+						offset: -fontSize * 0.01,
+						count: {
+							get float() {
+								return (size.height + gap) / (char.y.size + gap);
+							},
+							get floor() {
+								return Math.floor(this.float);
+							},
+						},
+					},
+				};
 
-			return char;
-		}),
+				return char;
+			},
+		),
 	);
 }

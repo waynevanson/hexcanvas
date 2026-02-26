@@ -46,6 +46,7 @@ export function App() {
 
 	createEffectRaf(
 		on(
+			// size is required for updates on change
 			[context, nodes.value, fontFamily, () => store.fontSize, char, size],
 			([context, nodes, fontFamily, fontSize, char]) => {
 				if (context === null || fontFamily === null || char === null) {
@@ -66,45 +67,50 @@ export function App() {
 		),
 	);
 
-	// function handleOnClick(
-	// 	event: MouseEvent & {
-	// 		currentTarget: HTMLCanvasElement;
-	// 		target: Element;
-	// 	},
-	// ) {
-	// 	const w = char.x.count.floor * char.x.box;
-	// 	const h = char.y.count.floor * char.y.box;
+	function handleOnClick(
+		event: MouseEvent & {
+			currentTarget: HTMLCanvasElement;
+			target: Element;
+		},
+	) {
+		const char_ = char();
 
-	// 	// out of bounds
-	// 	if (event.x > w || event.y > h) {
-	// 		return;
-	// 	}
+		if (char_ === null) {
+			return;
+		}
 
-	// 	// percentage from in bounds area
-	// 	const percW = event.x / w;
-	// 	const percH = event.y / h;
+		const xfloor = char_.x.count.floor;
+		const yfloor = char_.y.count.floor;
 
-	// 	// percentage of array
-	// 	const percw = percW * char.x.count.floor;
-	// 	const perch = percH * char.y.count.floor;
+		const w = xfloor * char_.x.box;
+		const h = yfloor * char_.y.box;
 
-	// 	const iW = Math.floor(percw);
-	// 	const iH = Math.floor(perch);
+		// out of bounds
+		if (event.x > w || event.y > h) {
+			return;
+		}
 
-	// 	const node = nodes.value().at(iH)?.at(iW);
+		// percentage from in bounds area
+		const percW = event.x / w;
+		const percH = event.y / h;
 
-	// 	if (!node) {
-	// 		throw new Error("Should find a node bro");
-	// 	}
+		// percentage of array
+		const percw = percW * xfloor;
+		const perch = percH * yfloor;
+		const colIndex = Math.floor(percw);
+		const rowIndex = Math.floor(perch);
 
-	// 	const ir = new Set(highlighted.get(iH));
-	// 	ir.add(iW);
+		const node = nodes.value().at(rowIndex)?.at(colIndex);
 
-	// 	highlighted.set(iH, ir);
+		if (!node) {
+			throw new Error("Should find a node bro");
+		}
 
-	// 	// find target node based on mouse x,y
-	// 	// get percentage of width,height
-	// }
+		nodes.setSelectNode({ colIndex, rowIndex }, true);
+
+		// find target node based on mouse x,y
+		// get percentage of width,height
+	}
 
 	return (
 		<div>
@@ -112,6 +118,7 @@ export function App() {
 				refCanvas={refCanvasSet}
 				refContainer={refContainerSet}
 				size={sizeNullable}
+				onClick={handleOnClick}
 			/>
 			<Controls
 				fontSize={store.fontSize}

@@ -10,42 +10,47 @@ export interface CellNode {
 	letter: string;
 }
 
+// todo: update node positions when range changes
 export function createNodes(store: AppStore, char: Accessor<Chars | null>) {
 	const [nodes, nodesSet] = createSignal<Array<Array<CellNode>>>([]);
 
 	// Update only when the store gets bigger in terms of number of items.
+	// It's gross but it's getting the job done efficiently.
 	createEffect(
-		on(char, (char) => {
+		on([char, () => store.gap], ([char, gap]) => {
 			if (char === null) {
 				return;
 			}
 
 			function createNode(indicies: { x: number; y: number }): CellNode {
 				return {
-					x: indicies.x * (char.x.size + store.gap) + char.x.offset,
-					y:
-						indicies.y * (char.y.size + store.gap) +
-						char.y.offset +
-						char.y.size,
+					x: indicies.x * (char.x.size + gap) + char.x.offset,
+					y: indicies.y * (char.y.size + gap) + char.y.offset + char.y.size,
 					selected: false,
 					letter: createRandomHexCode(),
 				};
 			}
 
 			nodesSet((nodes_) => {
-				const nodes = nodes_.concat();
+				const colsCurr = nodes_.at(0)?.length ?? 0;
+				const rowsCurr = nodes_.length;
 
-				let updated = false;
+				// resize existing nodes
+				const nodes = createCells({ x: colsCurr, y: rowsCurr }, (props) => {
+					const current = nodes_[props.y][props.x];
+					return Object.assign(createNode(props), {
+						selected: current.selected,
+						letter: current.letter,
+					});
+				});
 
-				const colsCurr = nodes.at(0)?.length ?? 0;
-				const rowsCurr = nodes.length;
+				// add extra columns or rows when required.
+
 				const colsTarget = char.x.count.floor;
 				const rowsTarget = char.y.count.floor;
 
 				// add columns
 				if (colsTarget > colsCurr) {
-					updated = true;
-
 					const colsMiss = colsTarget - colsCurr;
 
 					const extras = createCells({ x: colsMiss, y: rowsCurr }, (coord) =>
@@ -62,7 +67,6 @@ export function createNodes(store: AppStore, char: Accessor<Chars | null>) {
 
 				// add rows
 				if (rowsTarget > rowsCurr) {
-					updated = true;
 					const rowsMiss = rowsTarget - rowsCurr;
 
 					const extras = createCells(
@@ -73,18 +77,28 @@ export function createNodes(store: AppStore, char: Accessor<Chars | null>) {
 					nodes.push(...extras);
 				}
 
-				// use new reference
-				if (updated) {
-					return nodes;
-				}
-
 				// use same reference if there's no change
-				return nodes_;
+				return nodes;
 			});
 		}),
 	);
 
-	function setSelectNode(node: { x: number; y: number }) {}
+	// yuckies
+	function setSelectNode(
+		indicies: { rowIndex: number; colIndex: number },
+		selected: boolean,
+	) {
+		nodesSet((nodes_) => {
+			const nodes = nodes_.concat();
+			const cols = nodes[indicies.rowIndex].slice();
+			nodes[indicies.rowIndex] = cols;
+
+			const cell = { ...cols[indicies.colIndex], selected };
+			cols[indicies.colIndex] = cell;
+
+			return nodes;
+		});
+	}
 
 	return { value: nodes, setSelectNode };
 }
