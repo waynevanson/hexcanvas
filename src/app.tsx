@@ -5,6 +5,7 @@ import { Canvas, Controls } from "./components";
 import { createChar, createNodes } from "./hooks";
 import { createEffectRaf } from "./hooks/createEffectRaf";
 import { useFont } from "./hooks/useFont";
+import { linearly } from "./utils";
 
 export interface AppStore {
 	fontSize: number;
@@ -53,8 +54,6 @@ export function App() {
 
 		derived.context.reset();
 
-		// testing bounds
-
 		derived.context.font = `${local.fontSize}px ${derived.fontFamily}`;
 
 		for (const cells of nodes.value().slice(0, char.yCountFloor)) {
@@ -72,34 +71,26 @@ export function App() {
 			target: Element;
 		},
 	) {
-		// todo: check if box is the correct size
-		const xBound = char.xCountFloor * char.xBox;
-		const yBound = char.yCountFloor * char.yBox;
-
-		console.log({
-			x: event.x,
-			y: event.y,
-			xBound,
-			xCount: char.xCountFloor,
-			xBox: char.xBox,
-		});
+		const xBoundMax = char.xCountFloor * char.xBox;
+		const yBoundMax = char.yCountFloor * char.yBox;
 
 		// out of bounds
-		if (event.x > xBound || event.y > yBound) {
+		if (event.x > xBoundMax || event.y > yBoundMax) {
 			return;
 		}
 
-		// percentage from in bounds area
-		const xBoundPerc = event.x / xBound;
-		const yBoundPerc = event.y / yBound;
+		const xScale = linearly(
+			{ min: 0, max: xBoundMax },
+			{ min: 0, max: char.xCountFloor },
+		);
 
-		// percentage of array
-		const percw = xBoundPerc * char.xCountFloor;
-		const perch = yBoundPerc * char.yCountFloor;
+		const yScale = linearly(
+			{ min: 0, max: yBoundMax },
+			{ min: 0, max: char.yCountFloor },
+		);
 
-		// to integer
-		const colIndex = Math.round(percw);
-		const rowIndex = Math.round(perch);
+		const colIndex = Math.floor(xScale(event.x));
+		const rowIndex = Math.floor(yScale(event.y));
 
 		const node = nodes.value().at(rowIndex)?.at(colIndex);
 

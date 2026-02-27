@@ -40,3 +40,15 @@ export type SolidEvent<E extends Event, T extends HTMLElement> = E & {
 	currentTarget: T;
 	target: T;
 };
+
+export interface Bound {
+	min: number;
+	max: number;
+}
+
+export function linearly(from: Bound, to: Bound) {
+	const fromDiff = from.max - from.min;
+	const toDiff = to.max - to.min;
+
+	return (value: number) => ((value - from.min) / fromDiff) * toDiff + to.min;
+}
