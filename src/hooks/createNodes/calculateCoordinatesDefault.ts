@@ -1,4 +1,4 @@
-import { createRandomHexCode } from "../utils";
+import { createRandomHexCode } from "../../utils";
 import { calculateCoordinates } from "./calculateCoordinates";
 
 export function calculateCoordinatesDefaults(options: {

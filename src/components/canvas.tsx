@@ -21,7 +21,7 @@ export function Canvas(props: CanvasProps) {
 			style={{
 				"aspect-ratio": `${260 / 460}`,
 				overflow: "hidden",
-				"max-width": "40rem",
+				"max-width": "30rem",
 			}}
 		>
 			<canvas

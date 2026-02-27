@@ -30,7 +30,7 @@ export function createCells<T>(
 	);
 }
 
-// todo: seed
+// todo: seed?
 export function createRandomHexCode() {
 	const ss = "012345789ABCDEF";
 	return ss[Math.floor(Math.random() * ss.length)] ?? "5";

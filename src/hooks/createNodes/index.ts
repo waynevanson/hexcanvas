@@ -1,6 +1,6 @@
 import { makePersisted } from "@solid-primitives/storage";
 import { createEffect, createSignal } from "solid-js";
-import type { AppStore } from "../app";
+import type { AppStore } from "../../app";
 import { updateNodes } from "./updateNodes";
 
 export interface CellNode {
@@ -12,13 +12,13 @@ export interface CellNode {
 
 export function createNodes(
 	store: AppStore,
-	accessors: {
-		xCountFloor: () => number;
-		xOffset: () => number;
-		xSize: () => number;
-		yCountFloor: () => number;
-		ySize: () => number;
-		yOffset: () => number;
+	char: {
+		readonly xCountFloor: number;
+		readonly xOffset: number;
+		readonly xSize: number;
+		readonly yCountFloor: number;
+		readonly ySize: number;
+		readonly yOffset: number;
 	},
 ) {
 	const [nodes, nodesSet] = makePersisted(
@@ -31,12 +31,12 @@ export function createNodes(
 	createEffect(() => {
 		const options = {
 			gap: store.gap,
-			colsTarget: accessors.xCountFloor(),
-			rowsTarget: accessors.yCountFloor(),
-			xOffset: accessors.xOffset(),
-			yOffset: accessors.yOffset(),
-			xSize: accessors.xSize(),
-			ySize: accessors.ySize(),
+			colsTarget: char.xCountFloor,
+			rowsTarget: char.yCountFloor,
+			xOffset: char.xOffset,
+			yOffset: char.yOffset,
+			xSize: char.xSize,
+			ySize: char.ySize,
 		};
 
 		nodesSet((nodes) => updateNodes(nodes, options));
@@ -45,14 +45,15 @@ export function createNodes(
 	// yuckies
 	function setSelectNode(
 		indicies: { rowIndex: number; colIndex: number },
-		selected: boolean,
+		selected: (boolean: boolean) => boolean,
 	) {
 		nodesSet((nodes_) => {
 			const nodes = nodes_.concat();
 			const cols = nodes[indicies.rowIndex].slice();
 			nodes[indicies.rowIndex] = cols;
 
-			const cell = { ...cols[indicies.colIndex], selected };
+			const cell = { ...cols[indicies.colIndex] };
+			cell.selected = selected(cell.selected);
 			cols[indicies.colIndex] = cell;
 
 			return nodes;

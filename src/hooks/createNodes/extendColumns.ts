@@ -1,13 +1,12 @@
-import { createCells } from "../utils";
+import { createCells } from "../../utils";
 import type { CellNode } from ".";
 import { calculateCoordinatesDefaults } from "./calculateCoordinatesDefault";
 
-export function extendRows(
+export function extendColumns(
 	nodes: Array<Array<CellNode>>,
 	options: {
 		colsTarget: number;
 		colsCurr: number;
-		rowsTarget: number;
 		rowsCurr: number;
 		xSize: number;
 		xOffset: number;
@@ -16,17 +15,19 @@ export function extendRows(
 		gap: number;
 	},
 ) {
-	const rowsMiss = options.rowsTarget - options.rowsCurr;
+	const colsMiss = options.colsTarget - options.colsCurr;
 
 	const extras = createCells(
-		{ x: options.colsTarget, y: rowsMiss },
-		({ x: xIndex, y }) =>
+		{ x: colsMiss, y: options.rowsCurr },
+		({ x, y: yIndex }) =>
 			calculateCoordinatesDefaults({
 				...options,
-				xIndex,
-				yIndex: y + options.rowsCurr,
+				xIndex: x + options.colsCurr,
+				yIndex,
 			}),
 	);
 
-	nodes.push(...extras);
+	extras.forEach((cols, rowIndex) => {
+		nodes[rowIndex].push(...cols);
+	});
 }

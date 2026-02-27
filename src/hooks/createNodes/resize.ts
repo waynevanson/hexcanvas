@@ -1,4 +1,4 @@
-import { createCells } from "../utils";
+import { createCells } from "../../utils";
 import type { CellNode } from ".";
 import { calculateCoordinates } from "./calculateCoordinates";
 

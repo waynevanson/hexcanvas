@@ -1,16 +1,10 @@
-import {
-	createElementSize,
-	type Size,
-} from "@solid-primitives/resize-observer";
+import { createElementSize } from "@solid-primitives/resize-observer";
 import { makePersisted } from "@solid-primitives/storage";
-import { createMemo, createSignal, on } from "solid-js";
 import { createStore } from "solid-js/store";
-import { Canvas } from "./canvas";
-import { Controls } from "./controls";
-import { createChar } from "./createChar";
-import { createEffectRaf } from "./createEffectRaf";
-import { createNodes } from "./createNodes";
-import { useFont } from "./useFont";
+import { Canvas, Controls } from "./components";
+import { createChar, createNodes } from "./hooks";
+import { createEffectRaf } from "./hooks/createEffectRaf";
+import { useFont } from "./hooks/useFont";
 
 export interface AppStore {
 	fontSize: number;
@@ -18,93 +12,86 @@ export interface AppStore {
 }
 
 export function App() {
-	const [refContainer, refContainerSet] = createSignal<
-		HTMLDivElement | undefined
-	>(undefined);
-
-	const [refCanvas, refCanvasSet] = createSignal<HTMLCanvasElement | undefined>(
-		undefined,
-	);
-
-	const sizeNullable = createElementSize(refContainer);
-	const size = (): Size | null =>
-		sizeNullable.height === null || sizeNullable.width === null
-			? null
-			: sizeNullable;
-
-	const context = createMemo(() => refCanvas()?.getContext("2d") ?? null);
+	const [state, stateSet] = createStore({
+		container: undefined as undefined | HTMLDivElement,
+		canvas: undefined as undefined | HTMLCanvasElement,
+	});
 
 	const fontFamily = useFont(
 		"JetBrains Mono",
 		"/webfonts/JetBrainsMono-Regular.woff2",
 	);
 
-	const [store, storeSet] = makePersisted(
+	const size = createElementSize(() => state.container);
+
+	const [derived] = createStore({
+		get context() {
+			return state.canvas?.getContext("2d") ?? null;
+		},
+		get size() {
+			return size;
+		},
+		get fontFamily() {
+			return fontFamily();
+		},
+	});
+
+	const [local, localSet] = makePersisted(
 		createStore<AppStore>({ fontSize: 100, gap: 2 }),
-		{ name: "nodesstore", storage: localStorage },
+		{ name: "nodesstore", storage: window.localStorage },
 	);
 
-	const char = createChar(store, sizeNullable);
+	const [char] = createChar(local, derived.size);
 
-	const nodes = createNodes(store, char);
+	const nodes = createNodes(local, char);
 
 	// todo: make it pretty
-	createEffectRaf(
-		on(
-			[
-				context,
-				nodes.value,
-				fontFamily,
-				() => store.fontSize,
-				char.xCountFloor,
-				char.yCountFloor,
-				size,
-			],
-			([context, nodes, fontFamily, fontSize, xCountFloor, yCountFloor]) => {
-				if (context === null || fontFamily === null || char === null) {
-					return;
-				}
+	createEffectRaf(() => {
+		if (derived.context === null || derived.fontFamily === null) {
+			return;
+		}
 
-				context.reset();
+		derived.context.reset();
 
-				context.font = `${fontSize}px ${fontFamily}`;
+		// testing bounds
 
-				nodes.slice(0, yCountFloor).forEach((cells) => {
-					cells.slice(0, xCountFloor).forEach((cell) => {
-						context.fillStyle = cell.selected ? "green" : "lightgreen";
-						context.fillText(cell.letter, cell.x, cell.y);
-					});
-				});
-			},
-		),
-	);
+		derived.context.font = `${local.fontSize}px ${derived.fontFamily}`;
+
+		for (const cells of nodes.value().slice(0, char.yCountFloor)) {
+			for (const cell of cells.slice(0, char.xCountFloor)) {
+				derived.context.fillStyle = cell.selected ? "green" : "lightgreen";
+				derived.context.fillText(cell.letter, cell.x, cell.y);
+			}
+		}
+	});
 
 	// todo: fix the math on this, something isn't right
-	// looks like it's using the whole canvas hieght,
-	// or the offset is off
 	function handleOnClick(
 		event: MouseEvent & {
 			currentTarget: HTMLCanvasElement;
 			target: Element;
 		},
 	) {
-		const w = char.xCountFloor() * char.xBox();
-		const h = char.yCountFloor() * char.yBox();
+		// todo: check if box is the correct size
+		const xBound = char.xCountFloor * char.xBox;
+		const yBound = char.yCountFloor * char.yBox;
 
 		// out of bounds
-		if (event.x > w || event.y > h) {
+		if (event.x > xBound || event.y > yBound) {
 			return;
 		}
 
 		// percentage from in bounds area
-		const percW = event.x / w;
-		const percH = event.y / h;
+		const xBoundPerc = event.x / xBound;
+		const yBoundPerc = event.y / yBound;
 
 		// percentage of array
-		const percw = percW * char.xCountFloor();
-		const perch = percH * char.yCountFloor();
-		const colIndex = Math.floor(percw);
-		const rowIndex = Math.floor(perch);
+		const percw = xBoundPerc * char.xCountFloor;
+		const perch = yBoundPerc * char.yCountFloor;
+
+		// to integer
+		const colIndex = Math.round(percw);
+		const rowIndex = Math.round(perch);
 
 		const node = nodes.value().at(rowIndex)?.at(colIndex);
 
@@ -112,24 +99,24 @@ export function App() {
 			throw new Error("Should find a node bro");
 		}
 
-		nodes.setSelectNode({ colIndex, rowIndex }, true);
+		nodes.setSelectNode({ colIndex, rowIndex }, (a) => !a);
 	}
 
 	return (
 		<div>
 			<Canvas
-				refCanvas={refCanvasSet}
-				refContainer={refContainerSet}
-				size={sizeNullable}
+				refCanvas={(ref) => stateSet("canvas", ref)}
+				refContainer={(ref) => stateSet("container", ref)}
+				size={derived.size}
 				onClick={handleOnClick}
 			/>
 			<Controls
-				fontSize={store.fontSize}
-				gap={store.gap}
+				fontSize={local.fontSize}
+				gap={local.gap}
 				onInputFontSize={(event) =>
-					storeSet("fontSize", event.target.valueAsNumber)
+					localSet("fontSize", event.target.valueAsNumber)
 				}
-				onInputGap={(event) => storeSet("gap", event.target.valueAsNumber)}
+				onInputGap={(event) => localSet("gap", event.target.valueAsNumber)}
 				onClickClear={nodes.clearAllNodes}
 			/>
 		</div>
