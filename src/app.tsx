@@ -2,10 +2,10 @@ import { createElementSize } from "@solid-primitives/resize-observer";
 import { makePersisted } from "@solid-primitives/storage";
 import { createStore } from "solid-js/store";
 import { Canvas, Controls } from "./components";
-import { createChar, createNodes } from "./hooks";
+import { type CellNode, createChar, createNodes } from "./hooks";
 import { createEffectRaf } from "./hooks/createEffectRaf";
 import { useFont } from "./hooks/useFont";
-import { linearly } from "./utils";
+import { linearly, type SolidEvent } from "./utils";
 
 export interface AppStore {
 	fontSize: number;
@@ -16,6 +16,7 @@ export function App() {
 	const [state, stateSet] = createStore({
 		container: undefined as undefined | HTMLDivElement,
 		canvas: undefined as undefined | HTMLCanvasElement,
+		hovering: undefined as undefined | { rowIndex: number; colIndex: number },
 	});
 
 	const fontFamily = useFont(
@@ -56,21 +57,28 @@ export function App() {
 
 		derived.context.font = `${local.fontSize}px ${derived.fontFamily}`;
 
-		for (const cells of nodes.value().slice(0, char.yCountFloor)) {
+		// partition selected render last
+		const selected = [] as Array<CellNode>;
+		for (let y = 0; y < char.yCountFloat; y++) {
+			const cells = nodes.value()[y];
+
 			for (const cell of cells.slice(0, char.xCountFloor)) {
-				derived.context.fillStyle = cell.selected ? "green" : "lightgreen";
-				derived.context.fillText(cell.letter, cell.x, cell.y);
+				if (cell.selected) {
+					selected.push(cell);
+				} else {
+					derived.context.fillStyle = "green";
+					derived.context.fillText(cell.letter, cell.x, cell.y);
+				}
 			}
+		}
+
+		for (const cell of selected) {
+			derived.context.fillStyle = "lightgreen";
+			derived.context.fillText(cell.letter, cell.x, cell.y);
 		}
 	});
 
-	// todo: fix the math on this, something isn't right
-	function handleOnClick(
-		event: MouseEvent & {
-			currentTarget: HTMLCanvasElement;
-			target: Element;
-		},
-	) {
+	function findNodeIndicies(event: { x: number; y: number }) {
 		const xBoundMax = char.xCountFloor * char.xBox;
 		const yBoundMax = char.yCountFloor * char.yBox;
 
@@ -92,13 +100,28 @@ export function App() {
 		const colIndex = Math.floor(xScale(event.x));
 		const rowIndex = Math.floor(yScale(event.y));
 
-		const node = nodes.value().at(rowIndex)?.at(colIndex);
+		return { colIndex, rowIndex };
+	}
 
-		if (!node) {
-			throw new Error("Should find a node bro");
+	// todo: fix the math on this, something isn't right
+	function handleOnClick(event: SolidEvent<MouseEvent, HTMLCanvasElement>) {
+		const found = findNodeIndicies(event);
+
+		if (found === undefined) {
+			return;
 		}
 
-		nodes.setSelectNode({ colIndex, rowIndex }, (a) => !a);
+		nodes.setSelectNode(found, (a) => !a);
+	}
+
+	function handleOnMouseOver(event: SolidEvent<MouseEvent, HTMLCanvasElement>) {
+		const found = findNodeIndicies(event);
+
+		if (found === undefined) {
+			return;
+		}
+
+		// highlight
 	}
 
 	return (
@@ -108,6 +131,7 @@ export function App() {
 				refContainer={(ref) => stateSet("container", ref)}
 				size={derived.size}
 				onClick={handleOnClick}
+				onMouseOver={handleOnMouseOver}
 			/>
 			<Controls
 				fontSize={local.fontSize}

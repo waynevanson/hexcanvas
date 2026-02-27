@@ -38,7 +38,7 @@ export function createRandomHexCode() {
 
 export type SolidEvent<E extends Event, T extends HTMLElement> = E & {
 	currentTarget: T;
-	target: T;
+	target: Element;
 };
 
 export interface Bound {

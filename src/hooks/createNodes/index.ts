@@ -27,7 +27,7 @@ export function createNodes(
 	);
 
 	// Update only when the store gets bigger in terms of number of items.
-	// It's gross but it's getting the job done efficiently.
+	// todo: set a max bound? Local storage or arrays can only be so big
 	createEffect(() => {
 		const options = {
 			gap: store.gap,
