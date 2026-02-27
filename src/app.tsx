@@ -76,6 +76,14 @@ export function App() {
 		const xBound = char.xCountFloor * char.xBox;
 		const yBound = char.yCountFloor * char.yBox;
 
+		console.log({
+			x: event.x,
+			y: event.y,
+			xBound,
+			xCount: char.xCountFloor,
+			xBox: char.xBox,
+		});
+
 		// out of bounds
 		if (event.x > xBound || event.y > yBound) {
 			return;

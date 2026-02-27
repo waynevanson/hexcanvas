@@ -10,10 +10,10 @@ export function createChar(store: AppStore, size: NullableSize) {
 			return store.fontSize * 0.43;
 		},
 		get xBox() {
-			return this.xSize * 0.43;
+			return this.xSize + store.gap;
 		},
 		get xOffset() {
-			return -store.fontSize * 0.08;
+			return -store.fontSize * 0.08 + store.gap / 2;
 		},
 		get xCountFloat() {
 			return (size.width ?? 0 + store.gap) / (this.xSize + store.gap);
@@ -25,10 +25,10 @@ export function createChar(store: AppStore, size: NullableSize) {
 			return store.fontSize * 0.74;
 		},
 		get yBox() {
-			return this.ySize + store.gap / 2;
+			return this.ySize + store.gap;
 		},
 		get yOffset() {
-			return -store.fontSize * 0.01 + this.ySize;
+			return -store.fontSize * 0.01 + this.ySize + store.gap / 2;
 		},
 		get yCountFloat() {
 			return (size.height ?? 0 + store.gap) / (this.ySize + store.gap);
